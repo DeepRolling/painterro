@@ -44,6 +44,7 @@ export function setDefaults(parameters, allToolsNames) {
   if (params.language) {
     activate(params.language);
   }
+
   params.NON_SELECTABLE_TOOLS = ['pixelize', 'crop', 'rotate'];
 
   params.activeColor = settings.activeColor || params.activeColor || '#ff0000';
