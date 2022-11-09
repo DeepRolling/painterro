@@ -740,7 +740,7 @@ class PainterroProc {
              * @param {string} type - type of data url, default image/png
              * @param {string} quality - number from 0 to 1, works for `image/jpeg` or `image/webp`
              */
-            asDataURL: (type, quality) => {
+            asDataURL: (type, quality, targetCanvas) => {
                 let realType = type;
                 if (realType === undefined) {
                     if (this.loadedImageType) {
@@ -749,7 +749,7 @@ class PainterroProc {
                         realType = 'image/png';
                     }
                 }
-                return this.getAsUri(realType, quality);
+                return this.getAsUri(realType, quality, targetCanvas);
             },
             asBlob: (type, quality) => {
                 let realType = type;
@@ -827,12 +827,17 @@ class PainterroProc {
         }
     }
 
-    getAsUri(type, quality) {
+    getAsUri(type, quality, targetCanvas) {
         let realQuality = quality;
         if (realQuality === undefined) {
             realQuality = 0.92;
         }
-        return this.canvas.toDataURL(type, realQuality);
+        if (targetCanvas !== undefined) {
+            return targetCanvas.toDataURL(type, realQuality);
+        } else {
+            return this.canvas.toDataURL(type, realQuality);
+        }
+
     }
 
     getBtnEl(tool) {
@@ -921,7 +926,7 @@ class PainterroProc {
         }
         if (this.activeTool && this.activeTool.eventListner) {
             if (this.hookedToolsName.includes(this.activeTool.name)) {
-                console.log('callback to user with argument : ',this.activeTool.name, eventHandler)
+                console.log('callback to user with argument : ', this.activeTool.name, eventHandler)
                 // invoke hook function
                 this.whenToolHook(this.activeTool.name, eventHandler)
                 return
