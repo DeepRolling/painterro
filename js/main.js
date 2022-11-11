@@ -341,6 +341,14 @@ class PainterroProc {
                 eventListner: () => this.resizer,
             },
             {
+                name: 'drop',
+                activate: () => {
+                    if (this.initText) this.wrapper.click();
+                    this.worklog.dropState();
+                },
+                eventListner: () => this.resizer,
+            },
+            {
                 name: 'settings',
                 activate: () => {
                     if (this.initText) this.wrapper.click();
@@ -905,6 +913,11 @@ class PainterroProc {
         }
     }
 
+    rollbackLineNumber() {
+        this.primitiveTool.rollbackLineNumber();
+    }
+
+
     hookedToolsName = []
 
     whenToolHook = (toolName, eventName) => {
@@ -1273,6 +1286,7 @@ class PainterroProc {
         this.attachEventHandlers();
         return this;
     }
+
 
     hide() {
         if (this.isMobile) {

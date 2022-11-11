@@ -5,8 +5,16 @@ export default class PrimitiveTool {
         this.main = main;
         this.helperCanvas = document.createElement('canvas');
         this.canvas = main.canvas;
+        // record line coordinate during user drawing
         this.currentLineCoor = null
+        // record line index, see {@link }
+        this.lineIndex = 0
     }
+
+    rollbackLineNumber() {
+        this.lineIndex--
+    }
+
 
     activate(type) {
         this.type = type;
@@ -19,6 +27,11 @@ export default class PrimitiveTool {
     }
 
     setLineWidth(width) {
+
+        console.log(`PrimitiveTool : setLineWidth : ${width}`)
+        console.trace();
+
+        width = 1
         if (`${width}`.match(/^\d+$/)) {
             this.lineWidth = +width;
         } else {
@@ -27,6 +40,7 @@ export default class PrimitiveTool {
     }
 
     setShadowOn(state) {
+        console.log(`PrimitiveTool : setShadowOn : ${state}`)
         this.shadowOn = state;
     }
 
@@ -357,7 +371,19 @@ export default class PrimitiveTool {
                     // !!! invalid callback, ignore it !!!
                     return
                 }
-                this.main.worklog.captureState(undefined, this.currentLineCoor);
+
+                this.ctx.fillStyle = "red";
+                this.ctx.textAlign = "center";
+                const indexDisplayText = this.lineIndex < 9 ? `0${(this.lineIndex + 1).toString(10)}` : (this.lineIndex + 1).toString(10)
+                // console.log('fill text in location : ', this.currentLineCoor[0], this.currentLineCoor[1])
+                this.ctx.fillText(indexDisplayText, this.currentLineCoor[0], this.currentLineCoor[1]);
+                this.main.worklog.captureState(undefined, {
+                    lineCoordinate: this.currentLineCoor,
+                    lineIndex: this.lineIndex,
+                    lineIndexDisplayText: indexDisplayText
+                });
+                this.lineIndex++
+                this.currentLineCoor = null
             } else {
                 this.main.worklog.captureState();
             }

@@ -1,3 +1,5 @@
+import {tr} from "./translation";
+
 export default class WorkLog {
     constructor(main, changedHandler, undoCapture, redoCapture) {
         this.main = main;
@@ -14,7 +16,7 @@ export default class WorkLog {
         const saveState = Object.assign({}, this.current);
         let curCleared = this.clearedCount;
 
-        if (params.limit !== undefined) {
+        if (params && params.limit !== undefined) {
             const limit = params.limit;
             curCleared = 0;
             let active = saveState;
@@ -27,14 +29,19 @@ export default class WorkLog {
             }
             active.prev = null;
         }
-        return JSON.stringify({
+        // return JSON.stringify({
+        //     clearedCount: curCleared,
+        //     current: saveState,
+        // });
+        return {
             clearedCount: curCleared,
             current: saveState,
-        });
+        };
     }
 
     loadWorklogFromString(str) {
-        const obj = JSON.parse(str);
+        // const obj = JSON.parse(str);
+        const obj = str;
         if (obj) {
             this.clearedCount = obj.clearedCount;
             this.current = obj.current;
@@ -47,20 +54,23 @@ export default class WorkLog {
      * invoke changedHandler passed in this class
      * @param initial
      * @param type 'new'/'redo'/'undo'
+     * @param ignoreChangedHandler pass true to ignore callback invoke
      */
-    changed(initial, type) {
+    changed(initial, type, ignoreChangedHandler) {
         if (this.current.prevCount - this.clearedCount > this.main.params.worklogLimit) {
             this.first = this.first.next;
             this.first.prev = null;
             this.clearedCount += 1;
         }
-        this.changedHandler({
-            first: this.current.prev === null,
-            last: this.current.next === null,
-            type,
-            current: this.current,
-            initial,
-        });
+        if (ignoreChangedHandler !== true) {
+            this.changedHandler({
+                first: this.current.prev === null,
+                last: this.current.next === null,
+                type,
+                current: this.current,
+                initial,
+            });
+        }
         this.empty = initial;
         this.clean = false;
     }
@@ -72,6 +82,7 @@ export default class WorkLog {
      * @param extraInfo extra information store in current state, will pass to callback function such : this.changedHandler/this.main.params.onUndo/this.main.params.onRedo if exist
      */
     captureState(initial, extraInfo) {
+
         const operationToolName = this.main.activeTool ? this.main.activeTool.name : null;
         let activeToolName = this.main.activeTool ? this.main.activeTool.name : null;
         if (this.main.params.NON_SELECTABLE_TOOLS.includes(activeToolName)) {
@@ -98,6 +109,7 @@ export default class WorkLog {
         }
         state.next = null;
         this.current = state;
+        console.log('captureState called, this.current updated : ',this.current)
         this.changed(initial, 'new');
     }
 
@@ -115,13 +127,21 @@ export default class WorkLog {
         this.main.select.hide();
     }
 
-    undoState() {
+
+    /**
+     * undo current state, notice, state can be resumed by {@link redoState} after call this function
+     * @param dropCurrentState just drop current state, i.e. current state can't be resumed by {@link redoState}
+     */
+    undoState(dropCurrentState) {
         if (this.current.prev !== null) {
             this.undoCapture(this.current)
             let currentToolName = this.current.activeToolName;
             this.current = this.current.prev;
+            if (dropCurrentState === true) {
+                this.current.next = null;
+            }
             this.applyState(this.current);
-            this.changed(false, 'undo');
+            this.changed(false, 'undo', dropCurrentState);
             if (currentToolName) {
                 this.main.closeActiveTool(true);
                 this.main.setActiveTool(this.main.toolByName[currentToolName])
@@ -133,6 +153,10 @@ export default class WorkLog {
                 this.main.params.onUndo(this.current);
             }
         }
+    }
+
+    dropState() {
+        this.undoState(true)
     }
 
     redoState() {
