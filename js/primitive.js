@@ -15,6 +15,9 @@ export default class PrimitiveTool {
         this.lineIndex--
     }
 
+    riseLineNumber() {
+        this.lineIndex++
+    }
 
     activate(type) {
         this.type = type;

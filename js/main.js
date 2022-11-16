@@ -917,6 +917,10 @@ class PainterroProc {
         this.primitiveTool.rollbackLineNumber();
     }
 
+    riseLineNumber(){
+        this.primitiveTool.riseLineNumber();
+    }
+
 
     hookedToolsName = []
 
@@ -1008,11 +1012,23 @@ class PainterroProc {
         this.adjustSizeFull();
         this.select.adjustPosition();
         if (this.zoom) {
+            if (this.curCord === undefined) {
+                this.calculateCurrentCoordinate(clientX, clientY)
+            }
             this.scroller.scrollLeft = (this.curCord[0] / this.getScale()) -
                 (clientX - this.wrapper.documentOffsetLeft);
             this.scroller.scrollTop = (this.curCord[1] / this.getScale()) -
                 (clientY - this.wrapper.documentOffsetTop);
         }
+    }
+
+    calculateCurrentCoordinate(clientX, clientY) {
+        this.curCord = [
+            (clientX - this.elLeft()) + this.scroller.scrollLeft,
+            (clientY - this.elTop()) + this.scroller.scrollTop,
+        ];
+        const scale = this.getScale();
+        this.curCord = [this.curCord[0] * scale, this.curCord[1] * scale];
     }
 
     initEventHandlers() {
@@ -1080,12 +1096,8 @@ class PainterroProc {
                     this.handleToolEvent('handleMouseMove', e);
                     this.colorPicker.handleMouseMove(e);
                     this.zoomHelper.handleMouseMove(e);
-                    this.curCord = [
-                        (e.clientX - this.elLeft()) + this.scroller.scrollLeft,
-                        (e.clientY - this.elTop()) + this.scroller.scrollTop,
-                    ];
-                    const scale = this.getScale();
-                    this.curCord = [this.curCord[0] * scale, this.curCord[1] * scale];
+
+                    this.calculateCurrentCoordinate(e.clientX, e.clientY)
                     if (e.target.tagName.toLowerCase() !== 'input' && e.target.tagName.toLowerCase() !== 'button'
                         && e.target.tagName.toLowerCase() !== 'i' && e.target.tagName.toLowerCase() !== 'select') {
                         if (!this.zoomButtonActive) e.preventDefault();
@@ -1098,15 +1110,15 @@ class PainterroProc {
                     this.colorPicker.handleMouseUp(e);
                 }
             },
-            wheel: (e, forceWheenDelta, forceCtrlKey) => {
-                if (this.shown) {
-                    if (forceCtrlKey !== undefined ? forceCtrlKey : e.ctrlKey) {
-                        console.log('whell delta : ', e.wheelDelta, e.clientX, e.clientY)
-                        this.zoomImage(e, forceWheenDelta);
-                        e.preventDefault();
-                    }
-                }
-            },
+            // wheel: (e, forceWheenDelta, forceCtrlKey) => {
+            //     if (this.shown) {
+            //         if (forceCtrlKey !== undefined ? forceCtrlKey : e.ctrlKey) {
+            //             console.log('whell delta : ', e.wheelDelta, e.clientX, e.clientY)
+            //             this.zoomImage(e, forceWheenDelta);
+            //             e.preventDefault();
+            //         }
+            //     }
+            // },
             keydown: (e) => {
                 // console.log('event.target !== document.body', event.target, document.body);
                 const argetEl = event.target;
@@ -1119,40 +1131,40 @@ class PainterroProc {
                     if (this.colorPicker.handleKeyDown(e)) {
                         return;
                     }
-                    if (this.handleClipCopyEvent(e)) {
-                        return;
-                    }
+                    // if (this.handleClipCopyEvent(e)) {
+                    //     return;
+                    // }
                     const evt = window.event ? event : e;
                     if (this.handleToolEvent('handleKeyDown', evt)) {
                         return;
                     }
-                    if (
-                        (evt.keyCode === KEYS.y && evt.ctrlKey) ||
-                        (evt.keyCode === KEYS.z && evt.ctrlKey && evt.shiftKey)) {
-                        this.worklog.redoState();
-                        e.preventDefault();
-                        if (this.params.userRedo) {
-                            this.params.userRedo.call();
-                        }
-                    } else if (evt.keyCode === KEYS.z && evt.ctrlKey) {
-                        this.worklog.undoState();
-                        e.preventDefault();
-                        if (this.params.userUndo) {
-                            this.params.userUndo.call();
-                        }
-                    }
-                    if (this.toolByKeyCode[event.keyCode]) {
-                        this.getBtnEl(this.toolByKeyCode[event.keyCode]).click();
-                        e.stopPropagation();
-                        e.preventDefault();
-                    }
-                    if (this.saveBtn) {
-                        if (evt.keyCode === KEYS.s && evt.ctrlKey) {
-                            if (this.initText) this.wrapper.click();
-                            this.save();
-                            evt.preventDefault();
-                        }
-                    }
+                    // if (
+                    //     (evt.keyCode === KEYS.y && evt.ctrlKey) ||
+                    //     (evt.keyCode === KEYS.z && evt.ctrlKey && evt.shiftKey)) {
+                    //     this.worklog.redoState();
+                    //     e.preventDefault();
+                    //     if (this.params.userRedo) {
+                    //         this.params.userRedo.call();
+                    //     }
+                    // } else if (evt.keyCode === KEYS.z && evt.ctrlKey) {
+                    //     this.worklog.undoState();
+                    //     e.preventDefault();
+                    //     if (this.params.userUndo) {
+                    //         this.params.userUndo.call();
+                    //     }
+                    // }
+                    // if (this.toolByKeyCode[event.keyCode]) {
+                    //     this.getBtnEl(this.toolByKeyCode[event.keyCode]).click();
+                    //     e.stopPropagation();
+                    //     e.preventDefault();
+                    // }
+                    // if (this.saveBtn) {
+                    //     if (evt.keyCode === KEYS.s && evt.ctrlKey) {
+                    //         if (this.initText) this.wrapper.click();
+                    //         this.save();
+                    //         evt.preventDefault();
+                    //     }
+                    // }
                 }
             },
             paste: (event) => {
@@ -1183,21 +1195,21 @@ class PainterroProc {
                     this.bar.className = 'ptro-bar ptro-color-main';
                 }
             },
-            drop: (event) => {
-                if (this.shown) {
-                    this.bar.className = 'ptro-bar ptro-color-main';
-                    event.preventDefault();
-                    const file = event.dataTransfer.files[0];
-                    if (file) {
-                        this.openFile(file);
-                    } else {
-                        const text = event.dataTransfer.getData('text/html');
-                        const srcRe = /src.*?=['"](.+?)['"]/;
-                        const srcMatch = srcRe.exec(text);
-                        this.inserter.handleOpen(srcMatch[1]);
-                    }
-                }
-            },
+            // drop: (event) => {
+            //     if (this.shown) {
+            //         this.bar.className = 'ptro-bar ptro-color-main';
+            //         event.preventDefault();
+            //         const file = event.dataTransfer.files[0];
+            //         if (file) {
+            //             this.openFile(file);
+            //         } else {
+            //             const text = event.dataTransfer.getData('text/html');
+            //             const srcRe = /src.*?=['"](.+?)['"]/;
+            //             const srcMatch = srcRe.exec(text);
+            //             this.inserter.handleOpen(srcMatch[1]);
+            //         }
+            //     }
+            // },
         };
 
         this.windowHandlers = {
@@ -1218,6 +1230,7 @@ class PainterroProc {
         // passive: false fixes Unable to preventDefault inside passive event
         // listener due to target being treated as passive
         Object.keys(this.documentHandlers).forEach((key) => {
+            // window.addEventListener(key, this.documentHandlers[key], {passive: false});
             this.baseEl.addEventListener(key, this.documentHandlers[key], {passive: false});
         });
 
