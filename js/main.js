@@ -807,11 +807,12 @@ class PainterroProc {
 
 
     //SCCT
-    //expose function to let user click specified function, because external don't aware about id of these button
+    //Expose function to let user click specified function, because external don't aware about id of these buttons
     invokeToolButton(toolName) {
-        const targetTool = this.tools.filter(t => this.params.hiddenTools.indexOf(t.name) === -1).find((eachTool) => eachTool.name === toolName)
+        const existedTools = this.tools.filter(t => this.params.hiddenTools.indexOf(t.name) === -1);
+        const targetTool = existedTools.find((eachTool) => eachTool.name === toolName)
         if (targetTool === undefined) {
-            //target tool not exist,don't care about the sun of bitch
+            //Target tool not exist,don't care about the sun of bitch
             return
         }
         //zoomin/zoomout need click twice
@@ -917,7 +918,7 @@ class PainterroProc {
         this.primitiveTool.rollbackLineNumber();
     }
 
-    riseLineNumber(){
+    riseLineNumber() {
         this.primitiveTool.riseLineNumber();
     }
 
