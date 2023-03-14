@@ -581,6 +581,49 @@ class PainterroProc {
 
         this.loadedName = '';
         this.doc = document;
+
+
+        // create global canvas for rect functionality
+        this.globalCanvasContainer = this.doc.createElement('div');
+        this.globalCanvasContainer.id = `${this.id}-global-canvas-container`;
+        this.globalCanvasContainer.className = 'global-canvas-container';
+        this.globalCanvasContainer.innerHTML = `<canvas width="unset" id="${this.id}-global-canvas" class="global-canvas"></canvas>`
+        this.baseEl.appendChild(this.globalCanvasContainer);
+        this.globalCanvas = this.doc.querySelector(`#${this.id}-global-canvas`);
+        this.globalCtx = this.globalCanvas.getContext('2d');
+        //RECT DEBUG : Draw Rect : (105.5 : 72.5) | 40 : 28 | lineWidth : 1
+        // this.globalCtx.strokeStyle = 'purple';
+        // this.globalCtx.lineWidth = 1;
+        // this.globalCtx.beginPath();
+        // this.globalCtx.rect(
+        //     105.5,
+        //     72.5,
+        //     40,
+        //     28);
+        // this.globalCtx.strokeRect(105.5, 72.5, 40, 28);
+        // this.globalCtx.rect(
+        //     0,
+        //     0,
+        //     40,
+        //     28);
+        // this.globalCtx.strokeRect(0, 0, 40, 28);
+        // this.globalCtx.closePath();
+        const erd = window.elementResizeDetectorMaker();
+        erd.listenTo(this.globalCanvasContainer, (element) => {
+            const width = element.offsetWidth;
+            const height = element.offsetHeight;
+            if (this.globalCanvas.getAttribute('width') === 'unset') {
+                console.log('Remount canvas only once when container change, windows change will update style.width which not trigger canvas content clean.')
+                this.globalCanvas.setAttribute('width', width);
+                this.globalCanvas.setAttribute('height', height);
+                this.globalCanvas.width = width
+                this.globalCanvas.height = height
+            }
+            this.globalCanvas.style.width = width;
+            this.globalCanvas.style.height = height;
+            console.log("Size: " + width + "x" + height);
+        });
+        // create canvas wrapper for scrollable content
         this.wrapper = this.doc.createElement('div');
         this.wrapper.id = `${this.id}-wrapper`;
         this.wrapper.className = 'ptro-wrapper';
@@ -813,7 +856,22 @@ class PainterroProc {
         const targetTool = existedTools.find((eachTool) => eachTool.name === toolName)
         if (targetTool === undefined) {
             //Target tool not exist,don't care about the sun of bitch
+            console.error(`Take a look about whether you put the ${toolName} in hiddenTools field if you want to active this tool.`)
             return
+        }
+
+        //when active rect tool, remove pointer-events style to intercept all functionality
+        if (toolName === 'rect') {
+            this.globalCanvasContainer.style.pointerEvents = 'unset'
+            Object.keys(this.documentHandlers).forEach((key) => {
+                // window.addEventListener(key, this.documentHandlers[key], {passive: false});
+                this.globalCanvasContainer.addEventListener(key, this.documentHandlers[key], {passive: false});
+            });
+        } else {
+            this.globalCanvasContainer.style.pointerEvents = 'none'
+            Object.keys(this.documentHandlers).forEach((key) => {
+                this.globalCanvasContainer.removeEventListener(key, this.documentHandlers[key]);
+            });
         }
         //zoomin/zoomout need click twice
         if (toolName === 'zoomin' || toolName === 'zoomout') {

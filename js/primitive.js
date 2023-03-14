@@ -1,10 +1,16 @@
+/**
+ * !!! this class also work as event listener of every tools
+ */
 export default class PrimitiveTool {
     constructor(main) {
+        this.canvas = main.canvas;
         this.ctx = main.ctx;
+        this.globalCanvas = main.globalCanvas;
+        this.globalCtx = main.globalCtx;
         this.el = main.toolContainer;
         this.main = main;
         this.helperCanvas = document.createElement('canvas');
-        this.canvas = main.canvas;
+
         // record line coordinate during user drawing
         this.currentLineCoor = null
         // record line index, see {@link }
@@ -24,8 +30,10 @@ export default class PrimitiveTool {
         this.state = {};
         if (type === 'line' || type === 'brush' || type === 'eraser' || type === 'arrow') {
             this.ctx.lineJoin = 'round';
+            this.globalCtx.lineJoin = 'round';
         } else {
             this.ctx.lineJoin = 'miter';
+            this.globalCtx.lineJoin = 'miter';
         }
     }
 
@@ -60,12 +68,17 @@ export default class PrimitiveTool {
         const mainClass = event.target.classList[0];
 
         this.ctx.lineWidth = this.lineWidth;
+        this.globalCtx.lineWidth = this.lineWidth;
         this.ctx.strokeStyle = this.main.colorWidgetState.line.alphaColor;
+        this.globalCtx.strokeStyle = this.main.colorWidgetState.line.alphaColor;
         this.ctx.fillStyle = this.main.colorWidgetState.fill.alphaColor;
+        this.globalCtx.fillStyle = this.main.colorWidgetState.fill.alphaColor;
         const scale = this.main.getScale();
         this.ctx.lineCap = 'round';
-        if (mainClass === 'ptro-crp-el' || mainClass === 'ptro-zoomer') {
+        this.globalCtx.lineCap = 'round';
+        if (mainClass === 'ptro-crp-el' || mainClass === 'ptro-zoomer' || mainClass === 'global-canvas') {
             this.tmpData = this.ctx.getImageData(0, 0, this.main.size.w, this.main.size.h);
+            this.globalTmpData = this.globalCtx.getImageData(0, 0, this.globalCanvas.width, this.globalCanvas.height);
             if (this.type === 'brush' || this.type === 'eraser') {
                 this.state.cornerMarked = true;
                 const cord = [
@@ -86,6 +99,11 @@ export default class PrimitiveTool {
                     (event.clientY - this.main.elTop()) + this.main.scroller.scrollTop,
                 ];
                 this.centerCord = [this.centerCord[0] * scale, this.centerCord[1] * scale];
+                this.absoluteDropCord =
+                    [event.clientX - this.main.globalCanvasContainer.documentOffsetLeft,
+                        event.clientY - this.main.globalCanvasContainer.documentOffsetTop]
+                console.log(`RECT DEBUG : Drop point : \n (${event.clientX} : ${event.clientY}) (${this.main.globalCanvasContainer.documentOffsetLeft} : ${this.main.globalCanvasContainer.documentOffsetTop}) \n`,
+                    this.absoluteDropCord)
             }
         }
     }
@@ -142,12 +160,19 @@ export default class PrimitiveTool {
         const ctx = this.ctx;
         if (this.state.cornerMarked) {
             this.ctx.putImageData(this.tmpData, 0, 0);
+            this.globalCtx.putImageData(this.globalTmpData, 0, 0);
             this.curCord = [
                 (event.clientX - this.main.elLeft()) + this.main.scroller.scrollLeft,
                 (event.clientY - this.main.elTop()) + this.main.scroller.scrollTop,
             ];
             const scale = this.main.getScale();
             this.curCord = [this.curCord[0] * scale, this.curCord[1] * scale];
+
+            this.currentAbsoluteMoveCord =
+                [event.clientX - this.main.globalCanvasContainer.documentOffsetLeft,
+                    event.clientY - this.main.globalCanvasContainer.documentOffsetTop]
+            console.log(`RECT DEBUG : Move point : \n (${event.clientX} : ${event.clientY}) (${this.main.globalCanvasContainer.documentOffsetLeft} : ${this.main.globalCanvasContainer.documentOffsetTop}) \n`,
+                this.currentAbsoluteMoveCord)
 
             if (this.type === 'brush' || this.type === 'eraser') {
                 // const prevLast = this.points.slice(-1)[0];
@@ -268,14 +293,57 @@ export default class PrimitiveTool {
                 ctx.fillStyle = origFill;
                 ctx.shadowColor = origShadowColor;
             } else if (this.type === 'rect') {
-                ctx.beginPath();
+                // this.ctx.beginPath();
+                // const tl = [
+                //     this.centerCord[0],
+                //     this.centerCord[1]];
+                //
+                // let w = this.curCord[0] - this.centerCord[0];
+                // let h = this.curCord[1] - this.centerCord[1];
+                // if (event.ctrlKey || event.shiftKey) {
+                //     const min = Math.min(Math.abs(w), Math.abs(h));
+                //     w = min * Math.sign(w);
+                //     h = min * Math.sign(h);
+                // }
+                // const halfLW = this.lineWidth / 2.0;
+                // // normalize fix half compensation
+                // if (w < 0) {
+                //     tl[0] += w;
+                //     w = -w;
+                // }
+                // if (h < 0) {
+                //     tl[1] += h;
+                //     h = -h;
+                // }
+                // this.ctx.rect(
+                //     tl[0] + halfLW,
+                //     tl[1] + halfLW,
+                //     (w - this.lineWidth),
+                //     (h - this.lineWidth));
+                // this.ctx.fill();
+                //
+                // const origShadowColor = ctx.shadowColor;
+                // if (this.shadowOn) {
+                //     ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                //     ctx.shadowBlur = this.lineWidth;
+                //     ctx.shadowOffsetX = this.lineWidth / 2.0;
+                //     ctx.shadowOffsetY = this.lineWidth / 2.0;
+                // }
+                // if (this.lineWidth) {
+                //     // TODO: no shadow on unstroked, do we need it?
+                //     this.ctx.strokeRect(tl[0], tl[1], w, h);
+                // }
+                // ctx.shadowColor = origShadowColor;
+                // this.ctx.closePath();
 
+                //new implementation with absolute coordination
+                this.globalCtx.beginPath();
                 const tl = [
-                    this.centerCord[0],
-                    this.centerCord[1]];
+                    this.absoluteDropCord[0],
+                    this.absoluteDropCord[1]];
 
-                let w = this.curCord[0] - this.centerCord[0];
-                let h = this.curCord[1] - this.centerCord[1];
+                let w = this.currentAbsoluteMoveCord[0] - this.absoluteDropCord[0];
+                let h = this.currentAbsoluteMoveCord[1] - this.absoluteDropCord[1];
                 if (event.ctrlKey || event.shiftKey) {
                     const min = Math.min(Math.abs(w), Math.abs(h));
                     w = min * Math.sign(w);
@@ -291,27 +359,32 @@ export default class PrimitiveTool {
                     tl[1] += h;
                     h = -h;
                 }
-                this.ctx.rect(
-                    tl[0] + halfLW,
-                    tl[1] + halfLW,
-                    (w - this.lineWidth),
-                    (h - this.lineWidth));
-                this.ctx.fill();
+                const rectX = tl[0] + halfLW
+                const rectY = tl[1] + halfLW
+                const rectWidth = (w - this.lineWidth)
+                const rectHeight = (h - this.lineWidth)
+                console.log(`RECT DEBUG : Draw Rect : (${rectX} : ${rectY}) | ${rectWidth} : ${rectHeight} | lineWidth : ${this.lineWidth}`)
+                this.globalCtx.rect(
+                    rectX,
+                    rectY,
+                    rectWidth,
+                    rectHeight);
+                this.globalCtx.fill();
 
-                const origShadowColor = ctx.shadowColor;
+                const origShadowColor = this.globalCtx.shadowColor;
                 if (this.shadowOn) {
-                    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-                    ctx.shadowBlur = this.lineWidth;
-                    ctx.shadowOffsetX = this.lineWidth / 2.0;
-                    ctx.shadowOffsetY = this.lineWidth / 2.0;
+                    this.globalCtx.shadowColor = 'rgba(0,0,0,0.7)';
+                    this.globalCtx.shadowBlur = this.lineWidth;
+                    this.globalCtx.shadowOffsetX = this.lineWidth / 2.0;
+                    this.globalCtx.shadowOffsetY = this.lineWidth / 2.0;
                 }
                 if (this.lineWidth) {
                     // TODO: no shadow on unstroked, do we need it?
-                    this.ctx.strokeRect(tl[0], tl[1], w, h);
+                    this.globalCtx.strokeRect(tl[0], tl[1], w, h);
                 }
-                ctx.shadowColor = origShadowColor;
+                this.globalCtx.shadowColor = origShadowColor;
 
-                this.ctx.closePath();
+                this.globalCtx.closePath();
             } else if (this.type === 'ellipse') {
                 this.ctx.beginPath();
                 const x1 = this.centerCord[0];
@@ -368,6 +441,10 @@ export default class PrimitiveTool {
     handleMouseUp() {
         if (this.state.cornerMarked) {
             this.state.cornerMarked = false;
+            if (this.type === 'rect') {
+                //do nothing
+                return;
+            }
             if (this.type === 'line') {
                 //pass extra information for line type action
                 if (this.currentLineCoor === null) {
