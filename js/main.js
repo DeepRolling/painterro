@@ -584,45 +584,8 @@ class PainterroProc {
 
 
         // create global canvas for rect functionality
-        this.globalCanvasContainer = this.doc.createElement('div');
-        this.globalCanvasContainer.id = `${this.id}-global-canvas-container`;
-        this.globalCanvasContainer.className = 'global-canvas-container';
-        this.globalCanvasContainer.innerHTML = `<canvas width="unset" id="${this.id}-global-canvas" class="global-canvas"></canvas>`
-        this.baseEl.appendChild(this.globalCanvasContainer);
-        this.globalCanvas = this.doc.querySelector(`#${this.id}-global-canvas`);
-        this.globalCtx = this.globalCanvas.getContext('2d');
-        //RECT DEBUG : Draw Rect : (105.5 : 72.5) | 40 : 28 | lineWidth : 1
-        // this.globalCtx.strokeStyle = 'purple';
-        // this.globalCtx.lineWidth = 1;
-        // this.globalCtx.beginPath();
-        // this.globalCtx.rect(
-        //     105.5,
-        //     72.5,
-        //     40,
-        //     28);
-        // this.globalCtx.strokeRect(105.5, 72.5, 40, 28);
-        // this.globalCtx.rect(
-        //     0,
-        //     0,
-        //     40,
-        //     28);
-        // this.globalCtx.strokeRect(0, 0, 40, 28);
-        // this.globalCtx.closePath();
-        const erd = window.elementResizeDetectorMaker();
-        erd.listenTo(this.globalCanvasContainer, (element) => {
-            const width = element.offsetWidth;
-            const height = element.offsetHeight;
-            if (this.globalCanvas.getAttribute('width') === 'unset') {
-                console.log('Remount canvas only once when container change, windows change will update style.width which not trigger canvas content clean.')
-                this.globalCanvas.setAttribute('width', width);
-                this.globalCanvas.setAttribute('height', height);
-                this.globalCanvas.width = width
-                this.globalCanvas.height = height
-            }
-            this.globalCanvas.style.width = width;
-            this.globalCanvas.style.height = height;
-            console.log("Size: " + width + "x" + height);
-        });
+        this.initializeGlobalCanvasContainer()
+
         // create canvas wrapper for scrollable content
         this.wrapper = this.doc.createElement('div');
         this.wrapper.id = `${this.id}-wrapper`;
@@ -846,6 +809,69 @@ class PainterroProc {
         this.initEventHandlers();
         this.hide();
         this.zoomFactor = 1;
+        this.toolsHook = []
+    }
+
+
+    initializeGlobalCanvasContainer() {
+        const globalCanvasContainerId = 'global-canvas-container'
+        this.globalCanvasContainer = document.getElementById(globalCanvasContainerId)
+        if (this.globalCanvasContainer === null) {
+            this.globalCanvasContainer = this.doc.createElement('div');
+            this.globalCanvasContainer.id = `global-canvas-container`;
+            this.globalCanvasContainer.className = 'global-canvas-container';
+            this.globalCanvasContainer.innerHTML = `<canvas width="unset" id="global-canvas" class="global-canvas"></canvas>`
+            this.baseEl.appendChild(this.globalCanvasContainer);
+        }
+        this.globalCanvas = this.doc.querySelector(`#global-canvas`);
+        this.globalCtx = this.globalCanvas.getContext('2d');
+        //RECT DEBUG : Draw Rect : (105.5 : 72.5) | 40 : 28 | lineWidth : 1
+        // this.globalCtx.strokeStyle = 'purple';
+        // this.globalCtx.lineWidth = 1;
+        // this.globalCtx.beginPath();
+        // this.globalCtx.rect(
+        //     105.5,
+        //     72.5,
+        //     40,
+        //     28);
+        // this.globalCtx.strokeRect(105.5, 72.5, 40, 28);
+        // this.globalCtx.rect(
+        //     0,
+        //     0,
+        //     40,
+        //     28);
+        // this.globalCtx.strokeRect(0, 0, 40, 28);
+        // this.globalCtx.closePath();
+        const erd = window.elementResizeDetectorMaker();
+        erd.listenTo(this.globalCanvasContainer, (element) => {
+            const width = element.offsetWidth;
+            const height = element.offsetHeight;
+
+            if (this.globalCanvas.getAttribute('width') === 'unset') {
+                console.log('Remount canvas only once when container change, windows change will update style.width which not trigger canvas content clean.')
+                this.globalCanvas.setAttribute('width', width);
+                this.globalCanvas.setAttribute('height', height);
+                this.globalCanvas.width = width
+                this.globalCanvas.height = height
+            } else {
+                const canvasWidth = this.globalCanvas.getAttribute("width")
+                const canvasHeight = this.globalCanvas.getAttribute("height");
+
+                //获取画布的图像信息,一个副本
+                const imageBackup = this.globalCtx.getImageData(0, 0, canvasWidth, canvasHeight)
+                this.globalCanvas.setAttribute('width', width);
+                this.globalCanvas.setAttribute('height', height);
+                this.globalCtx.putImageData(imageBackup, 0, 0)
+            }
+
+            this.globalCanvas.style.width = width;
+            this.globalCanvas.style.height = height;
+            console.log("Size: " + width + "x" + height);
+        });
+    }
+
+    eraseGlobalCanvas() {
+        this.globalCtx.clearRect(0, 0, this.globalCanvas.width, this.globalCanvas.height);
     }
 
 
@@ -859,25 +885,26 @@ class PainterroProc {
             console.error(`Take a look about whether you put the ${toolName} in hiddenTools field if you want to active this tool.`)
             return
         }
-
-        //when active rect tool, remove pointer-events style to intercept all functionality
-        if (toolName === 'rect') {
-            this.globalCanvasContainer.style.pointerEvents = 'unset'
-            Object.keys(this.documentHandlers).forEach((key) => {
-                // window.addEventListener(key, this.documentHandlers[key], {passive: false});
-                this.globalCanvasContainer.addEventListener(key, this.documentHandlers[key], {passive: false});
-            });
-        } else {
-            this.globalCanvasContainer.style.pointerEvents = 'none'
-            Object.keys(this.documentHandlers).forEach((key) => {
-                this.globalCanvasContainer.removeEventListener(key, this.documentHandlers[key]);
-            });
-        }
         //zoomin/zoomout need click twice
         if (toolName === 'zoomin' || toolName === 'zoomout') {
             this.getBtnEl(targetTool).click();
             this.getBtnEl(targetTool).click();
         } else {
+            if (toolName === 'undo' || toolName === 'redo') {
+                const btn = this.getElemByIdSafe(targetTool.buttonId);
+                if (btn.getAttribute('disabled') !== null) {
+                    if (toolName === 'undo') {
+                        if (this.params.onNotUndoOperation) {
+                            this.params.onNotUndoOperation();
+                        }
+                    } else {
+                        if (this.params.onNotRedoOperation) {
+                            this.params.onNotRedoOperation();
+                        }
+                    }
+                }
+            }
+            // don't move this line up, because this operation maybe can modify 'disabled' attribute in button
             this.getBtnEl(targetTool).click();
         }
     }
@@ -981,18 +1008,39 @@ class PainterroProc {
     }
 
 
-    hookedToolsName = []
+    // hookedToolsName = []
+    //
+    // whenToolHook = (toolName, eventName) => {
+    //     //just declare function params here
+    // }
+    //
+    // updateHookedToolsName(hookedToolsNameReplace) {
+    //     this.hookedToolsName = hookedToolsNameReplace
+    // }
 
-    whenToolHook = (toolName, eventName) => {
-        //just declare function params here
+    registerToolEventHook(toolName, hooker) {
+        const targetBinding = this.toolsHook.find((eachToolHook) => eachToolHook.toolName === this.activeTool.name)
+        if (targetBinding === undefined) {
+            this.toolsHook.push({
+                toolName: toolName,
+                hooker: hooker
+            });
+        } else {
+            this.toolsHook = this.toolsHook.map((eachToolHook) => {
+                if (eachToolHook.toolName === toolName) {
+                    return {
+                        toolName: toolName,
+                        hooker: hooker
+                    }
+                }
+                return eachToolHook
+            })
+        }
+
     }
 
-    updateHookedToolsName(hookedToolsNameReplace) {
-        this.hookedToolsName = hookedToolsNameReplace
-    }
-
-    registerToolEventHook(whenToolHook) {
-        this.whenToolHook = whenToolHook;
+    unRegisterToolEventHook(toolName) {
+        this.toolsHook = this.toolsHook.filter((eachToolHook) => eachToolHook.toolName !== toolName)
     }
 
 
@@ -1001,10 +1049,12 @@ class PainterroProc {
             return this.select[eventHandler](event);
         }
         if (this.activeTool && this.activeTool.eventListner) {
-            if (this.hookedToolsName.includes(this.activeTool.name)) {
+            const targetBinding = this.toolsHook.find((eachToolHook) => eachToolHook.toolName === this.activeTool.name)
+            if (targetBinding !== undefined) {
                 console.log('callback to user with argument : ', this.activeTool.name, eventHandler)
                 // invoke hook function
-                this.whenToolHook(this.activeTool.name, eventHandler)
+                targetBinding.hooker(eventHandler, event)
+
                 return
             }
             const listner = this.activeTool.eventListner();
@@ -1165,6 +1215,7 @@ class PainterroProc {
             },
             mouseup: (e) => {
                 if (this.shown) {
+
                     this.handleToolEvent('handleMouseUp', e);
                     this.colorPicker.handleMouseUp(e);
                 }
@@ -1519,7 +1570,25 @@ class PainterroProc {
 
     setActiveTool(b) {
         this.activeTool = b;
+        if (this.params.onSetActiveTool) {
+            this.params.onSetActiveTool(b.name);
+        }
+        //when active rect tool, remove pointer-events style to intercept all functionality
+        if (b.name === 'rect') {
+            this.globalCanvasContainer.style.pointerEvents = 'unset'
+            Object.keys(this.documentHandlers).forEach((key) => {
+                // window.addEventListener(key, this.documentHandlers[key], {passive: false});
+                this.globalCanvasContainer.addEventListener(key, this.documentHandlers[key], {passive: false});
+            });
+        } else {
+            this.globalCanvasContainer.style.pointerEvents = 'none'
+            if (this.documentHandlers !== undefined) {
+                Object.keys(this.documentHandlers).forEach((key) => {
+                    this.globalCanvasContainer.removeEventListener(key, this.documentHandlers[key]);
+                });
+            }
 
+        }
         this.zoomButtonActive = false;
         const btnEl = this.getBtnEl(this.activeTool);
         if (btnEl) {

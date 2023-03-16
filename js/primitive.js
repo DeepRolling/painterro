@@ -15,6 +15,8 @@ export default class PrimitiveTool {
         this.currentLineCoor = null
         // record line index, see {@link }
         this.lineIndex = 0
+
+        this.drawnRect = undefined
     }
 
     rollbackLineNumber() {
@@ -380,7 +382,14 @@ export default class PrimitiveTool {
                 }
                 if (this.lineWidth) {
                     // TODO: no shadow on unstroked, do we need it?
-                    this.globalCtx.strokeRect(tl[0], tl[1], w, h);
+                    this.drawnRect = {
+                        dropPointX: tl[0],
+                        dropPointY: tl[1],
+                        rectWidth: w,
+                        rectHeight: h,
+                    }
+                    this.globalCtx.strokeRect(this.drawnRect.dropPointX, this.drawnRect.dropPointY,
+                        this.drawnRect.rectWidth, this.drawnRect.rectHeight);
                 }
                 this.globalCtx.shadowColor = origShadowColor;
 
@@ -442,7 +451,10 @@ export default class PrimitiveTool {
         if (this.state.cornerMarked) {
             this.state.cornerMarked = false;
             if (this.type === 'rect') {
-                //do nothing
+                // callback painted rect to main class and clear record
+                if (this.main.params.onRectDraw && this.drawnRect !== undefined) {
+                    this.main.params.onRectDraw(this.drawnRect);
+                }
                 return;
             }
             if (this.type === 'line') {

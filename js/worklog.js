@@ -152,6 +152,10 @@ export default class WorkLog {
             if (this.main.params.onUndo) {
                 this.main.params.onUndo(this.current);
             }
+        }else {
+            if (this.main.params.onNotUndoOperation) {
+                this.main.params.onNotUndoOperation();
+            }
         }
     }
 
@@ -177,6 +181,10 @@ export default class WorkLog {
 
             if (this.main.params.onRedo) {
                 this.main.params.onRedo(this.current);
+            }
+        }else {
+            if (this.main.params.onNotRedoOperation) {
+                this.main.params.onNotRedoOperation();
             }
         }
     }
